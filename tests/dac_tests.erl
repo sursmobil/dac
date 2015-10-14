@@ -86,3 +86,28 @@ use_cached_value_test() ->
   ]),
   ?assertEqual(val3, Val3),
   ?assertEqual(normal, Type3).
+
+%%%-------------------------------------------------------------------
+%%% dac module contains some commonly used readers like app to read
+%%% application config or env to read environmental variable. there is
+%%% also trans function which allows to applie transformation to existing
+%%% reader. It can be used for example if port is read as string instead
+%%% of integer (dac also has functions for that l2b for binary and l2i
+%%% for integer).
+%%%-------------------------------------------------------------------
+utils_test() ->
+  {ok, Val1, _} = ?dac_get([
+    dac:trans(fun() -> "string" end, [dac:l2b()])
+  ]),
+  ?assertEqual(<<"string">>, Val1),
+
+  {ok, Val2, _} = ?dac_get([
+    dac:trans(fun() -> "127" end, [dac:l2i()])
+  ]),
+  ?assertEqual(127, Val2),
+
+  application:set_env(dac, my_prop, val_app),
+  {ok, Val3, _} = ?dac_get([
+    dac:app(dac, my_prop)
+  ]),
+  ?assertEqual(val_app, Val3).

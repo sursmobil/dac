@@ -10,7 +10,7 @@
 -author("CJ").
 
 %% API
--export([get/4, env/1, trans/2, app/2]).
+-export([get/4, env/1, trans/2, app/2, l2b/0, l2i/0]).
 
 %%%-------------------------------------------------------------------
 %%% Exported Types
@@ -59,7 +59,20 @@ trans(Reader, Transform) when not is_list(Transform) ->
 trans(Reader, []) ->
   Reader;
 trans(Reader, [Transform | Rest]) ->
-  trans(fun() -> Transform(Reader()) end, Rest).
+  trans(fun() ->
+    case Reader() of
+      {ok, Val} -> Transform(Val);
+      undefined -> undefined
+    end
+  end, Rest).
+
+-spec l2b() -> transform().
+l2b() ->
+  fun(List) -> {ok, erlang:list_to_binary(List)} end.
+
+-spec l2i() -> transform().
+l2i() ->
+  fun(List) -> {ok, erlang:list_to_integer(List)} end.
 
 %%%-------------------------------------------------------------------
 %%% Local
