@@ -10,7 +10,7 @@
 -author("CJ").
 
 %% API
--export([get/4, env/1, trans/2, app/2, l2b/0, l2i/0]).
+-export([get/4, env/1, trans/2, app/2, l2b/0, l2i/0, l2a/0]).
 
 %%%-------------------------------------------------------------------
 %%% Exported Types
@@ -22,7 +22,9 @@
           normal.
 -type option() ::
           cached |
-          {default, value()}.
+          {default, value()} |
+          plain_val. %% Use this option if you are not interested in any aditional information then value.
+                     %% 'get' will return just value, not {ok, value, type}
 -type options() :: [option()].
 -type reader() :: fun(() -> {ok, value()} | undefined).
 -type transform() :: fun((Read :: value()) -> Desired :: value()).
@@ -39,7 +41,7 @@
 %%%-------------------------------------------------------------------
 %%% API
 %%%-------------------------------------------------------------------
--spec get(module(), atom(), [reader()], options()) -> {ok, value(), value_type()} | {error, any()}.
+-spec get(module(), atom(), [reader()], options()) -> {ok, value(), value_type()} | value() | {error, any()}.
 get(Module, Property, Readers, Opts) ->
   NewReaders = parse_options(Module, Property, Readers, Opts),
   {ok, Val, Type} = do_read(Module, Property, NewReaders),
@@ -47,7 +49,7 @@ get(Module, Property, Readers, Opts) ->
 
 -spec env(string()) -> reader().
 env(Env) ->
-  fun() -> case os:getenv(Env) of false -> undefined; Val -> Val end end.
+  fun() -> case os:getenv(Env) of false -> undefined; Val -> {ok, Val} end end.
 
 -spec app(App :: atom(), Prop :: atom()) -> reader().
 app(App, Prop) ->
@@ -73,6 +75,10 @@ l2b() ->
 -spec l2i() -> transform().
 l2i() ->
   fun(List) -> {ok, erlang:list_to_integer(List)} end.
+
+-spec l2a() -> transform().
+l2a() ->
+  fun(List) -> {ok, erlang:list_to_atom(List)} end.
 
 %%%-------------------------------------------------------------------
 %%% Local
@@ -105,10 +111,14 @@ do_read(Module, Property, [Reader | Rest]) ->
   end.
 
 -spec apply_options(module(), atom(), value(), value_type(), options()) -> [internal_reader()].
+apply_options(_, _, Val, _, [plain_val]) ->
+  Val;
 apply_options(_, _, Val, Type, []) ->
   {ok, Val, Type};
 apply_options(Module, Property, Val, cached = Type, [cached | Rest]) ->
   apply_options(Module, Property, Val, Type, Rest);
+apply_options(Module, Property, Val, cached = Type, [plain_val | Rest]) ->
+  apply_options(Module, Property, Val, Type, Rest ++ [plain_val]);
 apply_options(Module, Property, Val, Type, [cached | Rest]) ->
   put({dac, Module, Property}, Val),
   apply_options(Module, Property, Val, Type, Rest);

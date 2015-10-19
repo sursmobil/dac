@@ -14,6 +14,6 @@
     kernel,
     stdlib
   ]},
-  {modules, [dac]}
+  {modules, [dac]},
   {env, []}
 ]}.
