@@ -73,7 +73,6 @@ use_cached_value_test() ->
   ], [cached]),
   ?assertEqual(val1, Val1),
   ?assertEqual(normal, Type1),
-  ?assertEqual(val1, get({dac, ?MODULE, ?current_fun()})),
 
   {ok, Val2, Type2} = ?dac_get([
     fun() -> {ok, val2} end
@@ -97,12 +96,12 @@ use_cached_value_test() ->
 %%%-------------------------------------------------------------------
 utils_test() ->
   {ok, Val1, _} = ?dac_get([
-    dac:trans(fun() -> "string" end, [dac:l2b()])
+    dac:trans(fun() -> {ok, "string"} end, [dac:l2b()])
   ]),
   ?assertEqual(<<"string">>, Val1),
 
   {ok, Val2, _} = ?dac_get([
-    dac:trans(fun() -> "127" end, [dac:l2i()])
+    dac:trans(fun() -> {ok, "127"} end, [dac:l2i()])
   ]),
   ?assertEqual(127, Val2),
 
@@ -111,3 +110,13 @@ utils_test() ->
     dac:app(dac, my_prop)
   ]),
   ?assertEqual(val_app, Val3).
+
+%%%-------------------------------------------------------------------
+%%% If it is not neccesary to have information abbut value returned
+%%% 'plain_val' option can be used.
+%%%-------------------------------------------------------------------
+plain_value_test() ->
+  Val1 = ?dac_get([
+    dac:trans(fun() -> {ok, "string"} end, [dac:l2b()])
+  ], [plain_val]),
+  ?assertEqual(<<"string">>, Val1).

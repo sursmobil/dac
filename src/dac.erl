@@ -53,7 +53,7 @@ env(Env) ->
 
 -spec app(App :: atom(), Prop :: atom()) -> reader().
 app(App, Prop) ->
-  fun() -> case application:get_env(App, Prop) of undefined -> undefined; Val -> {ok, Val} end end.
+  fun() -> case application:get_env(App, Prop) of undefined -> undefined; Val -> Val end end.
 
 -spec trans(reader(), transform() | [transform()]) -> reader().
 trans(Reader, Transform) when not is_list(Transform) ->
