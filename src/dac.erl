@@ -10,7 +10,7 @@
 -author("CJ").
 
 %% API
--export([get/4, env/1, trans/2, app/2, l2b/0, l2i/0, l2a/0]).
+-export([get/4, env/1, trans/2, app/2, l2b/0, l2i/0, l2a/0, val_when/2]).
 
 %%%-------------------------------------------------------------------
 %%% Exported Types
@@ -46,6 +46,13 @@ get(Module, Property, Readers, Opts) ->
   NewReaders = parse_options(Module, Property, Readers, Opts),
   {ok, Val, Type} = do_read(Module, Property, NewReaders),
   apply_options(Module, Property, Val, Type, Opts).
+
+-spec val_when(fun(() -> boolean()), any()) -> reader().
+val_when(Predicate, Value) ->
+  case Predicate() of
+    true -> {ok, Value};
+    false -> undefined
+  end.
 
 -spec env(string()) -> reader().
 env(Env) ->
