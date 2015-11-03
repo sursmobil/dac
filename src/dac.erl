@@ -10,7 +10,7 @@
 -author("CJ").
 
 %% API
--export([get/4, env/1, trans/2, app/2, l2b/0, l2i/0, l2a/0, val_when/2]).
+-export([get/4, env/1, trans/2, app/2, l2b/0, l2i/0, l2a/0, cond/2, condn/2]).
 
 %%%-------------------------------------------------------------------
 %%% Exported Types
@@ -48,10 +48,16 @@ get(Module, Property, Readers, Opts) ->
   {ok, Val, Type} = do_read(Module, Property, NewReaders),
   apply_options(Module, Property, Val, Type, Opts).
 
--spec val_when(predicate() | [predicate()], any()) -> reader().
-val_when(Predicate, Value) when not is_list(Predicate) ->
-  val_when([Predicate], Value);
-val_when(Predicates, Value) ->
+-spec condn(predicate() | [predicate()], any()) -> reader().
+condn(Predicate, Value) when not is_list(Predicate) ->
+  cond([Predicate], Value);
+condn(Predicates, Value) ->
+  cond([fun() -> not Pred() end || Pred <- Predicates], Value).
+
+-spec cond(predicate() | [predicate()], any()) -> reader().
+cond(Predicate, Value) when not is_list(Predicate) ->
+  cond([Predicate], Value);
+cond(Predicates, Value) ->
   case lists:all(fun(Predicate) -> Predicate() end, Predicates) of
     true -> {ok, Value};
     false -> undefined
