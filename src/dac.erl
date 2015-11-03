@@ -27,9 +27,10 @@
                      %% 'get' will return just value, not {ok, value, type}
 -type options() :: [option()].
 -type reader() :: fun(() -> {ok, value()} | undefined).
+-type predicate() :: fun(() -> boolean()).
 -type transform() :: fun((Read :: value()) -> Desired :: value()).
 
--export_type([value/0, value_type/0, reader/0, option/0, options/0]).
+-export_type([value/0, value_type/0, reader/0, option/0, options/0, predicate/0]).
 
 %%%-------------------------------------------------------------------
 %%% Local types
@@ -47,9 +48,11 @@ get(Module, Property, Readers, Opts) ->
   {ok, Val, Type} = do_read(Module, Property, NewReaders),
   apply_options(Module, Property, Val, Type, Opts).
 
--spec val_when(fun(() -> boolean()), any()) -> reader().
-val_when(Predicate, Value) ->
-  case Predicate() of
+-spec val_when(predicate() | [predicate()], any()) -> reader().
+val_when(Predicate, Value) when not is_list(Predicate) ->
+  val_when([Predicate], Value);
+val_when(Predicates, Value) ->
+  case lists:all(fun(Predicate) -> Predicate() end, Predicates) of
     true -> {ok, Value};
     false -> undefined
   end.
