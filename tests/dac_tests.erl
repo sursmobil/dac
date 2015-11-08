@@ -24,7 +24,7 @@
 basic_get_test() ->
   {ok, Val, Type} = ?dac_get([
     fun() -> {ok, val} end
-  ]),
+  ], [verbose]),
   ?assertEqual(val, Val),
   ?assertEqual(normal, Type).
 
@@ -33,7 +33,7 @@ get_first_defined_test() ->
     fun() -> undefined end,
     fun() -> {ok, val1} end,
     fun() -> {ok, val2} end
-  ]),
+  ], [verbose]),
   ?assertEqual(val1, Val),
   ?assertEqual(normal, Type).
 
@@ -56,7 +56,7 @@ use_default_test() ->
   {ok, Val, Type} = ?dac_get([
     fun() -> undefined end,
     fun() -> undefined end
-  ], [{default, val_default}]),
+  ], [{default, val_default}, verbose]),
   ?assertEqual(val_default, Val),
   ?assertEqual(default, Type).
 
@@ -70,19 +70,19 @@ use_default_test() ->
 use_cached_value_test() ->
   {ok, Val1, Type1} = ?dac_get([
     fun() -> {ok, val1} end
-  ], [cached]),
+  ], [cached, verbose]),
   ?assertEqual(val1, Val1),
   ?assertEqual(normal, Type1),
 
   {ok, Val2, Type2} = ?dac_get([
     fun() -> {ok, val2} end
-  ], [cached]),
+  ], [cached, verbose]),
   ?assertEqual(val1, Val2),
   ?assertEqual(cached, Type2),
 
   {ok, Val3, Type3} = ?dac_get([
     fun() -> {ok, val3} end
-  ]),
+  ], [verbose]),
   ?assertEqual(val3, Val3),
   ?assertEqual(normal, Type3).
 
@@ -95,16 +95,19 @@ use_cached_value_test() ->
 %%% for integer).
 %%%-------------------------------------------------------------------
 utils_test() ->
+  %% transform string to binary
   {ok, Val1, _} = ?dac_get([
     dac:trans(fun() -> {ok, "string"} end, [dac:l2b()])
   ]),
   ?assertEqual(<<"string">>, Val1),
 
+  %% transform string to integer
   {ok, Val2, _} = ?dac_get([
     dac:trans(fun() -> {ok, "127"} end, [dac:l2i()])
   ]),
   ?assertEqual(127, Val2),
 
+  %% get application env
   application:set_env(dac, my_prop, val_app),
   {ok, Val3, _} = ?dac_get([
     dac:app(dac, my_prop)
@@ -113,10 +116,10 @@ utils_test() ->
 
 %%%-------------------------------------------------------------------
 %%% If it is not neccesary to have information abbut value returned
-%%% 'plain_val' option can be used.
+%%% verbose option can be ommited.
 %%%-------------------------------------------------------------------
 plain_value_test() ->
   Val1 = ?dac_get([
     dac:trans(fun() -> {ok, "string"} end, [dac:l2b()])
-  ], [plain_val]),
+  ]),
   ?assertEqual(<<"string">>, Val1).

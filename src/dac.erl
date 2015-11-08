@@ -23,8 +23,8 @@
 -type option() ::
           cached |
           {default, value()} |
-          plain_val. %% Use this option if you are not interested in any aditional information then value.
-                     %% 'get' will return just value, not {ok, value, type}
+          verbose. %% Use this option if you want any aditional information then value.
+                   %% Whnen used 'get' will return {ok, value, type}
 -type options() :: [option()].
 -type reader() :: fun(() -> {ok, value()} | undefined).
 -type predicate() :: fun(() -> boolean()).
@@ -127,14 +127,14 @@ do_read(Module, Property, [Reader | Rest]) ->
   end.
 
 -spec apply_options(module(), atom(), value(), value_type(), options()) -> [internal_reader()].
-apply_options(_, _, Val, _, [plain_val]) ->
+apply_options(_, _, Val, _, []) ->
   Val;
-apply_options(_, _, Val, Type, []) ->
+apply_options(_, _, Val, Type, [verbose]) ->
   {ok, Val, Type};
 apply_options(Module, Property, Val, cached = Type, [cached | Rest]) ->
   apply_options(Module, Property, Val, Type, Rest);
-apply_options(Module, Property, Val, cached = Type, [plain_val | Rest]) ->
-  apply_options(Module, Property, Val, Type, Rest ++ [plain_val]);
+apply_options(Module, Property, Val, cached = Type, [verbose | Rest]) ->
+  apply_options(Module, Property, Val, Type, Rest ++ [verbose]);
 apply_options(Module, Property, Val, Type, [cached | Rest]) ->
   put({dac, Module, Property}, Val),
   apply_options(Module, Property, Val, Type, Rest);
