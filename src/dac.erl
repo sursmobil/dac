@@ -1,8 +1,8 @@
 %%%-------------------------------------------------------------------
 %%% @author sjanota
-%%% @copyright (C) 2015, <COMPANY>
 %%% @doc
-%%%
+%%% Deployment Agnostic Configuration (DAC)
+%%% DAC is used to prioritize configuration sources.
 %%% @end
 %%% Created : 13. Oct 2015 22:13
 %%%-------------------------------------------------------------------
@@ -10,7 +10,7 @@
 -author("CJ").
 
 %% API
--export([get/4, env/1, trans/2, app/2, l2b/0, l2i/0, l2a/0, cond/2, condn/2]).
+-export([get/4, env/1, trans/2, app/2, l2b/0, l2i/0, l2a/0, must/2, mustnt/2]).
 
 %%%-------------------------------------------------------------------
 %%% Exported Types
@@ -48,16 +48,16 @@ get(Module, Property, Readers, Opts) ->
   {ok, Val, Type} = do_read(Module, Property, NewReaders),
   apply_options(Module, Property, Val, Type, Opts).
 
--spec condn(predicate() | [predicate()], any()) -> reader().
-condn(Predicate, Value) when not is_list(Predicate) ->
-  cond([Predicate], Value);
-condn(Predicates, Value) ->
-  cond([fun() -> not Pred() end || Pred <- Predicates], Value).
+-spec mustnt(predicate() | [predicate()], any()) -> reader().
+mustnt(Predicate, Value) when not is_list(Predicate) ->
+  must([Predicate], Value);
+mustnt(Predicates, Value) ->
+  must([fun() -> not Pred() end || Pred <- Predicates], Value).
 
--spec cond(predicate() | [predicate()], any()) -> reader().
-cond(Predicate, Value) when not is_list(Predicate) ->
-  cond([Predicate], Value);
-cond(Predicates, Value) ->
+-spec must(predicate() | [predicate()], any()) -> reader().
+must(Predicate, Value) when not is_list(Predicate) ->
+  must([Predicate], Value);
+must(Predicates, Value) ->
   case lists:all(fun(Predicate) -> Predicate() end, Predicates) of
     true -> {ok, Value};
     false -> undefined
