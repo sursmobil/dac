@@ -126,7 +126,7 @@ do_read(Module, Property, [Reader | Rest]) ->
     {ok, Val, Type} -> {ok, Val, Type}
   end.
 
--spec apply_options(module(), atom(), value(), value_type(), options()) -> [internal_reader()].
+-spec apply_options(module(), atom(), value(), value_type(), options()) -> value() | {ok, value(), value_type()}.
 apply_options(_, _, Val, _, []) ->
   Val;
 apply_options(_, _, Val, Type, [verbose]) ->
