@@ -58,10 +58,10 @@ mustnt(Predicates, Value) ->
 must(Predicate, Value) when not is_list(Predicate) ->
   must([Predicate], Value);
 must(Predicates, Value) ->
-  case lists:all(fun(Predicate) -> Predicate() end, Predicates) of
+  fun() -> case lists:all(fun(Predicate) -> Predicate() end, Predicates) of
     true -> {ok, Value};
     false -> undefined
-  end.
+  end end.
 
 -spec env(string()) -> reader().
 env(Env) ->
