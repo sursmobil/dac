@@ -10,7 +10,7 @@
 -author("CJ").
 
 %% API
--export([get/4, env/1, trans/2, app/2, l2b/0, l2i/0, l2a/0, must/2, mustnt/2]).
+-export([get/4, env/1, trans/2, app/2, l2b/0, l2i/0, l2a/0, must/2, mustnt/2, ifdef/1]).
 
 %%%-------------------------------------------------------------------
 %%% Exported Types
@@ -83,6 +83,10 @@ trans(Reader, [Transform | Rest]) ->
       undefined -> undefined
     end
   end, Rest).
+
+-spec ifdef(fun(() -> value() | undefined)) -> reader().
+ifdef(Fun) ->
+  fun() -> case Fun() of undefined -> undefined; Other -> {ok, Other} end.
 
 -spec l2b() -> transform().
 l2b() ->
