@@ -48,12 +48,19 @@ get(Module, Property, Readers, Opts) ->
   {ok, Val, Type} = do_read(Module, Property, NewReaders),
   apply_options(Module, Property, Val, Type, Opts).
 
+
+%%%-------------------------------------------------------------------
+%%% Utils
+%%%-------------------------------------------------------------------
+
+%% Configuration should use given value if predicate returns false
 -spec mustnt(predicate() | [predicate()], any()) -> reader().
 mustnt(Predicate, Value) when not is_list(Predicate) ->
   must([Predicate], Value);
 mustnt(Predicates, Value) ->
   must([fun() -> not Pred() end || Pred <- Predicates], Value).
 
+%% Configuration should use given value if predicate returns true
 -spec must(predicate() | [predicate()], any()) -> reader().
 must(Predicate, Value) when not is_list(Predicate) ->
   must([Predicate], Value);
@@ -63,14 +70,17 @@ must(Predicates, Value) ->
     false -> undefined
   end end.
 
+%% Use environmental variable if present
 -spec env(string()) -> reader().
 env(Env) ->
   fun() -> case os:getenv(Env) of false -> undefined; Val -> {ok, Val} end end.
 
+%% Use application configuration if present
 -spec app(App :: atom(), Prop :: atom()) -> reader().
 app(App, Prop) ->
   fun() -> case application:get_env(App, Prop) of undefined -> undefined; Val -> Val end end.
 
+%% Apply transformation to value returned by reader (if defined). See l2* functions
 -spec trans(reader(), transform() | [transform()]) -> reader().
 trans(Reader, Transform) when not is_list(Transform) ->
   trans(Reader, [Transform]);
@@ -84,18 +94,22 @@ trans(Reader, [Transform | Rest]) ->
     end
   end, Rest).
 
+%% Use value returned by function if it is defined
 -spec ifdef(fun(() -> value() | undefined)) -> reader().
 ifdef(Fun) ->
   fun() -> case Fun() of undefined -> undefined; Other -> {ok, Other} end end.
 
+%% Transform list to binary
 -spec l2b() -> transform().
 l2b() ->
   fun(List) -> {ok, erlang:list_to_binary(List)} end.
 
+%% Transform list to integer
 -spec l2i() -> transform().
 l2i() ->
   fun(List) -> {ok, erlang:list_to_integer(List)} end.
 
+%% Transform list to atom
 -spec l2a() -> transform().
 l2a() ->
   fun(List) -> {ok, erlang:list_to_atom(List)} end.
