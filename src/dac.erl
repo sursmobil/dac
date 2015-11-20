@@ -86,7 +86,7 @@ trans(Reader, [Transform | Rest]) ->
 
 -spec ifdef(fun(() -> value() | undefined)) -> reader().
 ifdef(Fun) ->
-  fun() -> case Fun() of undefined -> undefined; Other -> {ok, Other} end.
+  fun() -> case Fun() of undefined -> undefined; Other -> {ok, Other} end end.
 
 -spec l2b() -> transform().
 l2b() ->
