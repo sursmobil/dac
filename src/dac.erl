@@ -62,11 +62,11 @@ mustnt(Predicates, Value) ->
 
 %% Configuration should use given value if predicate returns true
 -spec must(predicate() | [predicate()], any()) -> reader().
-must(Predicate, Value) when not is_list(Predicate) ->
-  must([Predicate], Value);
-must(Predicates, Value) ->
+must(Predicate, Reader) when not is_list(Predicate) ->
+  must([Predicate], Reader);
+must(Predicates, Reader) ->
   fun() -> case lists:all(fun(Predicate) -> Predicate() end, Predicates) of
-    true -> {ok, Value};
+    true -> {ok, Reader()};
     false -> undefined
   end end.
 
