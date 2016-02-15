@@ -10,7 +10,7 @@
 -author("CJ").
 
 %% API
--export([get/4, env/1, trans/2, app/2, l2b/0, l2i/0, l2a/0, must/2, mustnt/2, ifdef/1]).
+-export([get/4, env/1, trans/2, app/2, l2b/0, l2i/0, l2a/0, onlyif/2, ifnot/2, ifdef/1]).
 
 %%%-------------------------------------------------------------------
 %%% Exported Types
@@ -24,7 +24,7 @@
           cached |
           {default, value()} |
           verbose. %% Use this option if you want any aditional information then value.
-                   %% Whnen used 'get' will return {ok, value, type}
+                   %% When used 'get' will return {ok, value, type}
 -type options() :: [option()].
 -type reader() :: fun(() -> {ok, value()} | undefined).
 -type predicate() :: fun(() -> boolean()).
@@ -53,18 +53,18 @@ get(Module, Property, Readers, Opts) ->
 %%% Utils
 %%%-------------------------------------------------------------------
 
-%% Configuration should use given value if predicate returns false
--spec mustnt(predicate() | [predicate()], any()) -> reader().
-mustnt(Predicate, Value) when not is_list(Predicate) ->
-  must([Predicate], Value);
-mustnt(Predicates, Value) ->
-  must([fun() -> not Pred() end || Pred <- Predicates], Value).
+%% Configuration should use given reader if predicates return false
+-spec ifnot(predicate() | [predicate()], any()) -> reader().
+ifnot(Predicate, Value) when not is_list(Predicate) ->
+  onlyif([Predicate], Value);
+ifnot(Predicates, Value) ->
+  onlyif([fun() -> not Pred() end || Pred <- Predicates], Value).
 
-%% Configuration should use given value if predicate returns true
--spec must(predicate() | [predicate()], any()) -> reader().
-must(Predicate, Reader) when not is_list(Predicate) ->
-  must([Predicate], Reader);
-must(Predicates, Reader) ->
+%% Configuration should use given reader if predicates return true
+-spec onlyif(predicate() | [predicate()], any()) -> reader().
+onlyif(Predicate, Reader) when not is_list(Predicate) ->
+  onlyif([Predicate], Reader);
+onlyif(Predicates, Reader) ->
   fun() -> case lists:all(fun(Predicate) -> Predicate() end, Predicates) of
     true -> {ok, Reader()};
     false -> undefined
@@ -94,7 +94,7 @@ trans(Reader, [Transform | Rest]) ->
     end
   end, Rest).
 
-%% Use value returned by function if it is defined
+%% Use value returned by function if it is different then 'undefined'
 -spec ifdef(fun(() -> value() | undefined)) -> reader().
 ifdef(Fun) ->
   fun() -> case Fun() of undefined -> undefined; Other -> {ok, Other} end end.
