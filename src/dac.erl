@@ -10,7 +10,7 @@
 -author("CJ").
 
 %% API
--export([get/4, env/1, trans/2, app/2, l2b/0, l2i/0, l2a/0, onlyif/2, ifnot/2, ifdef/1]).
+-export([get/4, env/1, trans/2, app/2, l2b/0, l2i/0, l2a/0, onlyif/2, ifnot/2, ifdef/1, val/1, b2l/0]).
 
 %%%-------------------------------------------------------------------
 %%% Exported Types
@@ -66,7 +66,7 @@ onlyif(Predicate, Reader) when not is_list(Predicate) ->
   onlyif([Predicate], Reader);
 onlyif(Predicates, Reader) ->
   fun() -> case lists:all(fun(Predicate) -> Predicate() end, Predicates) of
-    true -> {ok, Reader()};
+    true -> Reader();
     false -> undefined
   end end.
 
@@ -80,6 +80,11 @@ env(Env) ->
 app(App, Prop) ->
   fun() -> case application:get_env(App, Prop) of undefined -> undefined; Val -> Val end end.
 
+%% Reader with static value. Useful with onlyif or ifnot
+-spec val(Value :: value()) -> reader().
+val(Value) ->
+  fun() -> {ok, Value} end.
+
 %% Apply transformation to value returned by reader (if defined). See l2* functions
 -spec trans(reader(), transform() | [transform()]) -> reader().
 trans(Reader, Transform) when not is_list(Transform) ->
@@ -89,7 +94,7 @@ trans(Reader, []) ->
 trans(Reader, [Transform | Rest]) ->
   trans(fun() ->
     case Reader() of
-      {ok, Val} -> Transform(Val);
+      {ok, Val} -> {ok, Transform(Val)};
       undefined -> undefined
     end
   end, Rest).
@@ -102,17 +107,22 @@ ifdef(Fun) ->
 %% Transform list to binary
 -spec l2b() -> transform().
 l2b() ->
-  fun(List) -> {ok, erlang:list_to_binary(List)} end.
+  fun erlang:list_to_binary/1.
+
+%% Transform binary to list
+-spec b2l() -> transform().
+b2l() ->
+  fun erlang:binary_to_list/1.
 
 %% Transform list to integer
 -spec l2i() -> transform().
 l2i() ->
-  fun(List) -> {ok, erlang:list_to_integer(List)} end.
+  fun erlang:list_to_integer/1.
 
 %% Transform list to atom
 -spec l2a() -> transform().
 l2a() ->
-  fun(List) -> {ok, erlang:list_to_atom(List)} end.
+  fun erlang:list_to_atom/1.
 
 %%%-------------------------------------------------------------------
 %%% Local
