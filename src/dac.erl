@@ -10,7 +10,7 @@
 -author("CJ").
 
 %% API
--export([get/4, env/1, trans/2, app/2, l2b/0, l2i/0, l2a/0, onlyif/2, ifnot/2, ifdef/1, val/1, b2l/0]).
+-export([get/4, env/1, trans/2, app/2, l2b/0, l2i/0, l2a/0, onlyif/2, ifnot/2, ifdef/1, val/1, b2l/0, merge/4]).
 
 %%%-------------------------------------------------------------------
 %%% Exported Types
@@ -23,7 +23,7 @@
 -type option() ::
           cached |
           {default, value()} |
-          verbose. %% Use this option if you want any aditional information then value.
+          verbose. %% Use this option if you want any additional information then value.
                    %% When used 'get' will return {ok, value, type}
 -type options() :: [option()].
 -type reader() :: fun(() -> {ok, value()} | undefined).
@@ -48,6 +48,11 @@ get(Module, Property, Readers, Opts) ->
   {ok, Val, Type} = do_read(Module, Property, NewReaders),
   apply_options(Module, Property, Val, Type, Opts).
 
+-spec merge(module(), atom(), [reader()], options()) -> {ok, value(), value_type()} | value() | {error, any()}.
+merge(Module, Property, Readers, Opts) ->
+  NewReaders = parse_options(Module, Property, Readers, Opts),
+  {ok, Val, Type} = do_merge(Module, Property, NewReaders),
+  apply_options(Module, Property, Val, Type, Opts).
 
 %%%-------------------------------------------------------------------
 %%% Utils
@@ -154,6 +159,23 @@ do_read(Module, Property, [Reader | Rest]) ->
     {ok, Val, Type} -> {ok, Val, Type}
   end.
 
+-spec do_merge(module(), atom(), [internal_reader()]) -> {ok, value(), value_type()}.
+do_merge(Module, Property, Readers) ->
+  do_merge(Module, Property, Readers, undefined).
+
+-spec do_merge(module(), atom(), [internal_reader()], Acc :: undefined | {acc, value(), value_type()}) -> {ok, value(), value_type()}.
+do_merge(Module, Property, [], undefined) ->
+  erlang:throw({config_not_present, {Module, Property}});
+do_merge(_Module, _Property, [], {acc, Val, Type}) ->
+  {ok, Val, Type};
+do_merge(Module, Property, [Reader | Rest], Acc) ->
+  NewAcc = case Reader() of
+    undefined -> Acc;
+    {ok, Val} -> merge_values(Acc, Val, normal);
+    {ok, Val, Type} -> merge_values(Acc, Val, Type)
+  end,
+  do_merge(Module, Property, Rest, NewAcc).
+
 -spec apply_options(module(), atom(), value(), value_type(), options()) -> value() | {ok, value(), value_type()}.
 apply_options(_, _, Val, _, []) ->
   Val;
@@ -168,3 +190,10 @@ apply_options(Module, Property, Val, Type, [cached | Rest]) ->
   apply_options(Module, Property, Val, Type, Rest);
 apply_options(Module, Property, Val, Type, [_ | Rest]) ->
   apply_options(Module, Property, Val, Type, Rest).
+
+merge_values(undefined, Val, Type) ->
+  {acc, Val, Type};
+merge_values({acc, Previous, _PrevType}, New, _Type) when is_map(Previous) and is_map(New) ->
+  {acc, maps:merge(New, Previous), merged};
+merge_values({acc, Previous, _PrevType}, New, _Type) when is_list(Previous) and is_list(New) ->
+  {acc, Previous ++ New, merged}.

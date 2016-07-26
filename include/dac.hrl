@@ -13,3 +13,7 @@
 -define(dac_get(Property, Readers, Opts), dac:get(?MODULE, Property, Readers, Opts)).
 -define(dac_get(Readers, Opts), dac:get(?MODULE, ?current_fun(), Readers, Opts)).
 -define(dac_get(Readers), dac:get(?MODULE, ?current_fun(), Readers, [])).
+
+-define(dac_merge(Property, Readers, Opts), dac:merge(?MODULE, Property, Readers, Opts)).
+-define(dac_merge(Readers, Opts), dac:merge(?MODULE, ?current_fun(), Readers, Opts)).
+-define(dac_merge(Readers), dac:merge(?MODULE, ?current_fun(), Readers, [])).
