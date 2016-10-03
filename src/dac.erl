@@ -10,7 +10,21 @@
 -author("CJ").
 
 %% API
--export([get/4, env/1, trans/2, app/2, l2b/0, l2i/0, l2a/0, onlyif/2, ifnot/2, ifdef/1, val/1, b2l/0, merge/4]).
+-export([
+  get/4,
+  env/1,
+  trans/2,
+  app/2,
+  l2b/0,
+  l2i/0,
+  l2a/0,
+  onlyif/2,
+  ifnot/2,
+  ifdef/1,
+  val/1,
+  b2l/0,
+  merge/4
+]).
 
 %%%-------------------------------------------------------------------
 %%% Exported Types
@@ -25,12 +39,24 @@
           {default, value()} |
           verbose. %% Use this option if you want any additional information then value.
                    %% When used 'get' will return {ok, value, type}
+-type merge_option() :: option() | deep.
+
 -type options() :: [option()].
+-type merge_options() :: [merge_option()].
 -type reader() :: fun(() -> {ok, value()} | undefined).
 -type predicate() :: fun(() -> boolean()).
 -type transform() :: fun((Read :: value()) -> Desired :: value()).
 
--export_type([value/0, value_type/0, reader/0, option/0, options/0, predicate/0]).
+-export_type([
+  value/0,
+  value_type/0,
+  reader/0,
+  option/0,
+  options/0,
+  predicate/0,
+  merge_options/0,
+  merge_option/0
+]).
 
 %%%-------------------------------------------------------------------
 %%% Local types
@@ -51,7 +77,7 @@ get(Module, Property, Readers, Opts) ->
 -spec merge(module(), atom(), [reader()], options()) -> {ok, value(), value_type()} | value() | {error, any()}.
 merge(Module, Property, Readers, Opts) ->
   NewReaders = parse_options(Module, Property, Readers, Opts),
-  {ok, Val, Type} = do_merge(Module, Property, NewReaders),
+  {ok, Val, Type} = do_merge(Module, Property, NewReaders, Opts),
   apply_options(Module, Property, Val, Type, Opts).
 
 %%%-------------------------------------------------------------------
@@ -159,22 +185,22 @@ do_read(Module, Property, [Reader | Rest]) ->
     {ok, Val, Type} -> {ok, Val, Type}
   end.
 
--spec do_merge(module(), atom(), [internal_reader()]) -> {ok, value(), value_type()}.
-do_merge(Module, Property, Readers) ->
-  do_merge(Module, Property, Readers, undefined).
+-spec do_merge(module(), atom(), [internal_reader()], merge_options()) -> {ok, value(), value_type()}.
+do_merge(Module, Property, Readers, Opts) ->
+  do_merge(Module, Property, Readers, Opts, undefined).
 
--spec do_merge(module(), atom(), [internal_reader()], Acc :: undefined | {acc, value(), value_type()}) -> {ok, value(), value_type()}.
-do_merge(Module, Property, [], undefined) ->
+-spec do_merge(module(), atom(), [internal_reader()], merge_options(), Acc :: undefined | {acc, value(), value_type()}) -> {ok, value(), value_type()}.
+do_merge(Module, Property, [], Opts, undefined) ->
   erlang:throw({config_not_present, {Module, Property}});
-do_merge(_Module, _Property, [], {acc, Val, Type}) ->
+do_merge(_Module, _Property, [], Opts, {acc, Val, Type}) ->
   {ok, Val, Type};
-do_merge(Module, Property, [Reader | Rest], Acc) ->
+do_merge(Module, Property, [Reader | Rest], Opts, Acc) ->
   NewAcc = case Reader() of
     undefined -> Acc;
-    {ok, Val} -> merge_values(Acc, Val, normal);
-    {ok, Val, Type} -> merge_values(Acc, Val, Type)
+    {ok, Val} -> merge_values(Acc, Val, normal, Opts);
+    {ok, Val, Type} -> merge_values(Acc, Val, Type, Opts)
   end,
-  do_merge(Module, Property, Rest, NewAcc).
+  do_merge(Module, Property, Rest, Opts, NewAcc).
 
 -spec apply_options(module(), atom(), value(), value_type(), options()) -> value() | {ok, value(), value_type()}.
 apply_options(_, _, Val, _, []) ->
@@ -191,9 +217,50 @@ apply_options(Module, Property, Val, Type, [cached | Rest]) ->
 apply_options(Module, Property, Val, Type, [_ | Rest]) ->
   apply_options(Module, Property, Val, Type, Rest).
 
-merge_values(undefined, Val, Type) ->
+merge_values(undefined, Val, Type, _Opts) ->
   {acc, Val, Type};
-merge_values({acc, Previous, _PrevType}, New, _Type) when is_map(Previous) and is_map(New) ->
-  {acc, maps:merge(New, Previous), merged};
-merge_values({acc, Previous, _PrevType}, New, _Type) when is_list(Previous) and is_list(New) ->
+merge_values({acc, Previous, _PrevType}, New, _Type, Opts) when is_map(Previous) and is_map(New) ->
+  case proplists:get_bool(deep, Opts) of
+    true ->
+      {acc, deep_merge_map(Previous, New), merged};
+    false ->
+      {acc, maps:merge(New, Previous), merged}
+  end;
+merge_values({acc, Previous, _PrevType}, New, _Type, _Opts) when is_list(Previous) and is_list(New) ->
   {acc, Previous ++ New, merged}.
+
+deep_merge_map(Base, Overwrite) ->
+  DoOverwrite = fun
+    Loop([], Acc) -> Acc;
+    Loop([Key | Keys], Acc) ->
+      Value = maps:get(Key, Base),
+      NewAcc = case maps:is_key(Key, Overwrite) of
+        true ->
+          OverwriteValue = maps:get(Key, Overwrite),
+          NewValue = if
+            is_map(Value) andalso is_map(OverwriteValue) ->
+              deep_merge_map(Value, OverwriteValue);
+            is_list(Value) andalso is_list(OverwriteValue) ->
+              Value ++ OverwriteValue;
+            true ->
+              Value
+          end,
+          maps:put(Key, NewValue, Acc);
+        false ->
+          Acc
+      end,
+      Loop(Keys, NewAcc)
+  end,
+  AddMissing = fun
+    Loop([], Acc) -> Acc;
+    Loop([Key | Keys], Acc) ->
+      NewAcc = case maps:is_key(Key, Acc) of
+        false ->
+          maps:put(Key, maps:get(Key, Overwrite), Acc);
+        true ->
+          Acc
+      end,
+      Loop(Keys, NewAcc)
+  end,
+  Map1 = DoOverwrite(maps:keys(Base), Base),
+  AddMissing(maps:keys(Overwrite), Map1).

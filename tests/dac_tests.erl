@@ -123,3 +123,17 @@ plain_value_test() ->
     dac:trans(fun() -> {ok, "string"} end, [dac:l2b()])
   ]),
   ?assertEqual(<<"string">>, Val1).
+
+merge_test() ->
+  Val = ?dac_merge([
+    dac:val(#{val1 => 1, map => #{val2 => 2, val3 => 3}}),
+    dac:val(#{map => #{val4 => 4}, val5 => 5, val1 => 12})
+  ]),
+  ?assertEqual(#{val1 => 1, map => #{val2 => 2, val3 => 3}, val5 => 5}, Val).
+
+merge_deep_test() ->
+  Val = ?dac_merge([
+    dac:val(#{val1 => 1, map => #{val2 => 2, val3 => 3}}),
+    dac:val(#{map => #{val4 => 4}, val5 => 5, val1 => 12})
+  ], [deep]),
+  ?assertEqual(#{val1 => 1, map => #{val4 => 4, val2 => 2, val3 => 3}, val5 => 5}, Val).
