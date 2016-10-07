@@ -197,8 +197,8 @@ do_merge(_Module, _Property, [], Opts, {acc, Val, Type}) ->
 do_merge(Module, Property, [Reader | Rest], Opts, Acc) ->
   NewAcc = case Reader() of
     undefined -> Acc;
-    {ok, Val} -> merge_values(Acc, Val, normal, Opts);
-    {ok, Val, Type} -> merge_values(Acc, Val, Type, Opts)
+    {ok, Val} -> merge_in_previous(Acc, Val, normal, Opts);
+    {ok, Val, Type} -> merge_in_previous(Acc, Val, Type, Opts)
   end,
   do_merge(Module, Property, Rest, Opts, NewAcc).
 
@@ -217,19 +217,26 @@ apply_options(Module, Property, Val, Type, [cached | Rest]) ->
 apply_options(Module, Property, Val, Type, [_ | Rest]) ->
   apply_options(Module, Property, Val, Type, Rest).
 
-merge_values(undefined, Val, Type, _Opts) ->
+merge_in_previous(undefined, Val, Type, _Opts) ->
   {acc, Val, Type};
-merge_values({acc, Previous, _PrevType}, New, _Type, Opts) when is_map(Previous) and is_map(New) ->
-  case proplists:get_bool(deep, Opts) of
-    true ->
-      {acc, deep_merge_map(Previous, New), merged};
-    false ->
-      {acc, maps:merge(New, Previous), merged}
-  end;
-merge_values({acc, Previous, _PrevType}, New, _Type, _Opts) when is_list(Previous) and is_list(New) ->
-  {acc, Previous ++ New, merged}.
+merge_in_previous({acc, Previous, _PrevType}, New, Type, Opts) ->
+  NewValue = merge_values(Previous, New, Opts),
+  {acc, NewValue, Type}.
 
-deep_merge_map(Base, Overwrite) ->
+merge_values(Previous, New, Opts) when is_map(Previous) and is_map(New) ->
+  case proplists:is_defined(deep, Opts) of
+    true -> deep_merge_map(Previous, New, Opts);
+    false -> maps:merge(New, Previous)
+  end;
+merge_values(Previous, New, Opts) when is_list(Previous) and is_list(New) ->
+  case proplists:get_value(deep, Opts) of
+    true -> Previous ++ New;
+    maps -> Previous
+  end;
+merge_values(Previous, _New, _Opts) ->
+  Previous.
+
+deep_merge_map(Base, Overwrite, Opts) ->
   DoOverwrite = fun
     Loop([], Acc) -> Acc;
     Loop([Key | Keys], Acc) ->
@@ -237,14 +244,7 @@ deep_merge_map(Base, Overwrite) ->
       NewAcc = case maps:is_key(Key, Overwrite) of
         true ->
           OverwriteValue = maps:get(Key, Overwrite),
-          NewValue = if
-            is_map(Value) andalso is_map(OverwriteValue) ->
-              deep_merge_map(Value, OverwriteValue);
-            is_list(Value) andalso is_list(OverwriteValue) ->
-              Value ++ OverwriteValue;
-            true ->
-              Value
-          end,
+          NewValue = merge_values(Value, OverwriteValue, Opts),
           maps:put(Key, NewValue, Acc);
         false ->
           Acc
