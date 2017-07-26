@@ -58,3 +58,4 @@ rel/example_project
 .concrete/DEV_MODE
 .rebar
 
+_build
