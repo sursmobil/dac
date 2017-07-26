@@ -30,7 +30,7 @@ basic_get_test() ->
 
 get_first_defined_test() ->
   {ok, Val, Type} = ?dac_get([
-    fun() -> undefned end,
+    fun() -> undefined end,
     fun() -> {ok, val1} end,
     fun() -> {ok, val2} end
   ], [verbose]),
