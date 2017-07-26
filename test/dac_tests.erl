@@ -54,7 +54,7 @@ error_thrown_if_value_not_found_test() ->
 %%%-------------------------------------------------------------------
 use_default_test() ->
   {ok, Val, Type} = ?dac_get([
-    fun() -> undefned end,
+    fun() -> undefined end,
     fun() -> undefined end
   ], [{default, val_default}, verbose]),
   ?assertEqual(val_default, Val),
