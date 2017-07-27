@@ -104,7 +104,7 @@ onlyif(Predicates, Reader) ->
 %% Use environmental variable if present
 -spec env(string()) -> reader().
 env(Env) ->
-  fun(_A) -> case os:getenv(Env) of false -> undefined; Val -> {ok, Val} end end.
+  fun() -> case os:getenv(Env) of false -> undefined; Val -> {ok, Val} end end.
 
 %% Use application configuration if present
 -spec app(App :: atom(), Prop :: atom()) -> reader().
